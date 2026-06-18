@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('magic', {
   stopCapture: () => ipcRenderer.send('stop-capture'),
   sendAudio: (arrayBuffer) => ipcRenderer.send('audio-chunk', arrayBuffer),
   requestTranslate: (payload) => ipcRenderer.send('request-translate', payload),
+  toggleOnTop: () => ipcRenderer.invoke('toggle-on-top'),
 
   onStatus: (cb) => ipcRenderer.on('status', (_e, p) => cb(p)),
   onSpeech: (cb) => ipcRenderer.on('speech', (_e, p) => cb(p)),

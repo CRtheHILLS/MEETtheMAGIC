@@ -17,15 +17,23 @@
         <span class="dot"></span>
         <span id="status-text">대기 중</span>
       </div>
+      <button id="ontop-btn" class="ghost-btn" title="항상 위에 표시 (오버레이)">📌</button>
+      <button id="copy-btn" class="ghost-btn" title="전체 대화 복사">📋</button>
       <button id="memo-toggle" class="ghost-btn" title="메모장 열기/닫기">📝 메모</button>
       <button id="font-btn" class="ghost-btn" title="글자 크기">A±</button>
       <button id="start-btn" class="primary-btn">▶ 시작</button>
     </div>
   </header>
 
+  <div id="speaker-bar" class="speaker-bar">
+    <span class="sb-hint">화자</span>
+    <div id="speaker-chips" class="speaker-chips"></div>
+  </div>
+
   <main class="layout">
     <section class="caption-pane">
       <div id="feed" class="feed"></div>
+      <button id="jump-btn" class="jump-btn hidden">↓ 최신으로</button>
 
       <!-- Live / idle bar -->
       <div id="live" class="live">

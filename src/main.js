@@ -92,11 +92,11 @@ function openRealtime() {
               model: TRANSCRIBE_MODEL,
               language: 'en'
             },
+            // semantic_vad + high eagerness: fastest finalization without
+            // cutting mid-sentence (verified accepted for transcription sessions).
             turn_detection: {
-              type: 'server_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 200,
-              silence_duration_ms: 300
+              type: 'semantic_vad',
+              eagerness: 'high'
             },
             noise_reduction: { type: 'near_field' }
           }
@@ -174,10 +174,8 @@ function closeRealtime() {
 // ---------- Translation (EN -> KO) ----------
 
 const TRANSLATE_SYS =
-  'You are a professional real-time interpreter for a music industry meeting (composers, A&R). ' +
-  'Translate the English (often an unfinished, mid-sentence fragment) into natural Korean. ' +
-  'Translate whatever is given even if incomplete, do not wait for a full sentence. ' +
-  'Output ONLY the Korean translation, no quotes, no notes. Keep proper nouns, brand and song names as-is.';
+  'Interpret English (music-industry meeting; may be a mid-sentence fragment) into natural Korean. ' +
+  'Translate whatever is given even if incomplete. Output ONLY Korean, no notes. Keep proper nouns/song names as-is.';
 
 async function translate(text, itemId, seq, isFinal) {
   try {
@@ -191,6 +189,7 @@ async function translate(text, itemId, seq, isFinal) {
         model: TRANSLATE_MODEL,
         temperature: 0.2,
         stream: true,
+        max_tokens: 200,
         messages: [
           { role: 'system', content: TRANSLATE_SYS },
           { role: 'user', content: text }
@@ -241,6 +240,13 @@ ipcMain.on('start-capture', () => {
 ipcMain.on('stop-capture', () => {
   closeRealtime();
   sendToRenderer('status', { state: 'stopped', message: '정지됨' });
+});
+
+ipcMain.handle('toggle-on-top', () => {
+  if (!mainWindow) return false;
+  const v = !mainWindow.isAlwaysOnTop();
+  mainWindow.setAlwaysOnTop(v, 'screen-saver');
+  return v;
 });
 
 ipcMain.on('request-translate', (_event, payload) => {
