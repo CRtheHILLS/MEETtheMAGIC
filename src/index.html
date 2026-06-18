@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEET the MAGIC</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">✦</span>
+      <span class="brand-name">MEET <em>the</em> MAGIC</span>
+    </div>
+    <div class="controls">
+      <div id="status" class="status">
+        <span class="dot"></span>
+        <span id="status-text">대기 중</span>
+      </div>
+      <button id="memo-toggle" class="ghost-btn" title="메모장 열기/닫기">📝 메모</button>
+      <button id="font-btn" class="ghost-btn" title="글자 크기">A±</button>
+      <button id="start-btn" class="primary-btn">▶ 시작</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="caption-pane">
+      <div id="feed" class="feed"></div>
+
+      <!-- Live / idle bar -->
+      <div id="live" class="live">
+        <div id="idle-bars" class="idle-bars">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div id="live-text" class="live-text"></div>
+      </div>
+    </section>
+
+    <section id="memo-pane" class="memo-pane hidden">
+      <div class="memo-head">메모장</div>
+      <textarea id="memo" placeholder="미팅 메모를 자유롭게 적으세요... (자동 저장)"></textarea>
+    </section>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
