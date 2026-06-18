@@ -92,11 +92,15 @@ function openRealtime() {
               model: TRANSCRIBE_MODEL,
               language: 'en'
             },
-            // semantic_vad + high eagerness: fastest finalization without
-            // cutting mid-sentence (verified accepted for transcription sessions).
+            // server_vad with a SHORT silence window: commit a segment at every
+            // small pause so captions come out one short line at a time, fast,
+            // instead of semantic_vad batching several sentences (which causes
+            // dead air in a live meeting). 250ms = snappy without shredding words.
             turn_detection: {
-              type: 'semantic_vad',
-              eagerness: 'high'
+              type: 'server_vad',
+              threshold: 0.45,
+              prefix_padding_ms: 200,
+              silence_duration_ms: 250
             },
             noise_reduction: { type: 'near_field' }
           }
