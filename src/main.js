@@ -8,7 +8,8 @@ const WebSocket = require('ws');
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const TRANSCRIBE_MODEL = process.env.TRANSCRIBE_MODEL || 'gpt-4o-transcribe';
-const TRANSLATE_MODEL = process.env.TRANSLATE_MODEL || 'gpt-4.1-mini';
+const TRANSLATE_MODEL = process.env.TRANSLATE_MODEL || 'gpt-4.1-nano';
+const COPILOT_MODEL = process.env.COPILOT_MODEL || 'gpt-4.1-mini';
 
 let mainWindow = null;
 let realtimeWS = null;
@@ -16,10 +17,10 @@ let wsReady = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 760,
-    height: 920,
-    minWidth: 420,
-    minHeight: 500,
+    width: 1240,
+    height: 940,
+    minWidth: 720,
+    minHeight: 520,
     title: 'MEET the MAGIC',
     backgroundColor: '#0b0d12',
     autoHideMenuBar: true,
@@ -235,7 +236,141 @@ async function translate(text, itemId, seq, isFinal) {
   }
 }
 
+// ---------- JARVIS Copilot ----------
+
+// Stream a chat-completions answer, forwarding deltas on the given channel.
+async function streamChat(messages, { model, id, channel, temperature = 0.3, maxTokens = 700 }) {
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({ model, temperature, max_tokens: maxTokens, stream: true, messages })
+    });
+    if (!res.ok || !res.body) {
+      sendToRenderer(channel + '-done', { id, error: 'http ' + res.status });
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const j = JSON.parse(data);
+          const d = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+          if (d) sendToRenderer(channel + '-delta', { id, delta: d });
+        } catch (e) { /* ignore */ }
+      }
+    }
+    sendToRenderer(channel + '-done', { id });
+  } catch (e) {
+    sendToRenderer(channel + '-done', { id, error: e.message });
+  }
+}
+
+// Stream a Responses-API answer with the built-in web_search tool.
+async function streamWebResearch(input, { id, channel }) {
+  try {
+    const res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: COPILOT_MODEL,
+        tools: [{ type: 'web_search' }],
+        stream: true,
+        input
+      })
+    });
+    if (!res.ok || !res.body) {
+      sendToRenderer(channel + '-done', { id, error: 'http ' + res.status });
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let searched = false;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const j = JSON.parse(data);
+          if (j.type === 'response.output_text.delta' && j.delta) {
+            sendToRenderer(channel + '-delta', { id, delta: j.delta });
+          } else if (j.type && j.type.indexOf('web_search') >= 0 && !searched) {
+            searched = true;
+            sendToRenderer(channel + '-delta', { id, delta: '🔍 웹 검색 중...\n\n' });
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
+    sendToRenderer(channel + '-done', { id });
+  } catch (e) {
+    sendToRenderer(channel + '-done', { id, error: e.message });
+  }
+}
+
+const BRIEF_SYS =
+  '너는 한국 음악 프로듀서의 실시간 회의 비서(JARVIS)다. 아래 영어 회의 대화록을 보고 ' +
+  '한국어로 아주 간결하게, 사용자가 회의를 빠르게 이해하도록 브리핑하라. 형식(해당 없으면 그 줄 생략):\n' +
+  '🎯 핵심\n- (지금 무슨 얘기 중인지 2~3개, 짧게)\n' +
+  '📌 용어\n- term = 뜻 (방금 나온 전문용어/은어/약어만, 없으면 생략)\n' +
+  '⚡ 주목\n- (사용자에게 온 질문, 결정사항, 마감·숫자·이름 등 놓치면 안 되는 것. 없으면 생략)\n' +
+  '군더더기 없이. 새로 나온 내용 위주로.';
+
+const ASK_SYS =
+  '너는 한국 음악 프로듀서의 실시간 회의 비서다. 아래 회의 대화록을 참고해 사용자의 질문에 ' +
+  '한국어로 간결하고 정확하게 답하라. 영어 전문용어/은어는 풀어서 설명. 대화록에 없는 일반 지식도 활용하되, ' +
+  '확실하지 않으면 모른다고 말하라.';
+
 // ---------- IPC ----------
+
+ipcMain.on('copilot-brief', (_event, payload) => {
+  const transcript = (payload && payload.transcript || '').trim();
+  if (!transcript) { sendToRenderer('brief-done', {}); return; }
+  streamChat(
+    [{ role: 'system', content: BRIEF_SYS }, { role: 'user', content: '회의 대화록:\n' + transcript }],
+    { model: COPILOT_MODEL, id: 'brief', channel: 'brief', temperature: 0.3, maxTokens: 500 }
+  );
+});
+
+ipcMain.on('copilot-ask', (_event, payload) => {
+  const id = payload && payload.id;
+  const question = (payload && payload.question || '').trim();
+  const transcript = (payload && payload.transcript || '').trim();
+  if (!question) { sendToRenderer('ask-done', { id }); return; }
+  if (payload && payload.web) {
+    const input =
+      ASK_SYS + '\n\n[회의 대화록]\n' + (transcript || '(없음)') +
+      '\n\n[질문]\n' + question +
+      '\n\n필요하면 웹 검색으로 최신·전문 정보를 찾아 한국어로 답하라.';
+    streamWebResearch(input, { id, channel: 'ask' });
+  } else {
+    streamChat(
+      [
+        { role: 'system', content: ASK_SYS },
+        { role: 'user', content: '[회의 대화록]\n' + (transcript || '(없음)') + '\n\n[질문]\n' + question }
+      ],
+      { model: COPILOT_MODEL, id, channel: 'ask', temperature: 0.3, maxTokens: 800 }
+    );
+  }
+});
 
 ipcMain.on('start-capture', () => {
   openRealtime();

@@ -1,9 +1,7 @@
 'use strict';
 
 const startBtn = document.getElementById('start-btn');
-const memoToggle = document.getElementById('memo-toggle');
 const fontBtn = document.getElementById('font-btn');
-const memoPane = document.getElementById('memo-pane');
 const memo = document.getElementById('memo');
 const statusEl = document.getElementById('status');
 const statusText = document.getElementById('status-text');
@@ -16,6 +14,17 @@ const speakerChips = document.getElementById('speaker-chips');
 const ontopBtn = document.getElementById('ontop-btn');
 const copyBtn = document.getElementById('copy-btn');
 const jumpBtn = document.getElementById('jump-btn');
+// JARVIS side pane
+const sidePane = document.getElementById('side-pane');
+const jarvisToggle = document.getElementById('jarvis-toggle');
+const briefStatus = document.getElementById('brief-status');
+const cpBrief = document.getElementById('cp-brief');
+const cpAnswers = document.getElementById('cp-answers');
+const cpScroll = document.getElementById('cp-scroll');
+const cpQ = document.getElementById('cp-q');
+const cpSend = document.getElementById('cp-send');
+const webToggle = document.getElementById('web-toggle');
+const cpCopy = document.getElementById('cp-copy');
 
 let running = false;
 let audioContext = null;
@@ -231,6 +240,12 @@ async function toggleRun() {
     feed.innerHTML = '';
     items.clear();
     liveText.textContent = '';
+    // reset JARVIS briefing for a fresh meeting
+    finalsSinceBrief = 0;
+    briefBuf = '';
+    cpBrief.innerHTML = '<div class="cp-empty">회의 내용이 쌓이면 자비스가<br/>자동으로 핵심을 정리합니다…</div>';
+    briefStatus.textContent = '실시간';
+    briefStatus.className = 'brief-status live';
   } else {
     running = false;
     stopCapture();
@@ -406,6 +421,7 @@ window.magic.onTranscriptFinal((p) => {
   it.card.classList.remove('live-card');
   commitSpeaker(it); // final voice-based speaker assignment
   scheduleTranslate(p.itemId, true);
+  noteNewFinal(); // wake the JARVIS auto-briefing
 });
 
 window.magic.onTranslationStart((p) => {
@@ -426,9 +442,154 @@ window.magic.onTranslationDone(() => {});
 // ---------- Memo ----------
 memo.value = localStorage.getItem('magic-memo') || '';
 memo.addEventListener('input', () => localStorage.setItem('magic-memo', memo.value));
-memoToggle.addEventListener('click', () => {
-  memoPane.classList.toggle('hidden');
-  memoToggle.classList.toggle('active', !memoPane.classList.contains('hidden'));
+
+// ---------- Side pane: tabs + toggle ----------
+document.querySelectorAll('.side-tabs .tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.side-tabs .tab').forEach((t) => t.classList.remove('active'));
+    tab.classList.add('active');
+    const which = tab.dataset.tab;
+    document.getElementById('copilot-tab').classList.toggle('hidden', which !== 'copilot');
+    document.getElementById('memo-tab').classList.toggle('hidden', which !== 'memo');
+  });
+});
+jarvisToggle.addEventListener('click', () => {
+  sidePane.classList.toggle('hidden');
+  jarvisToggle.classList.toggle('active', !sidePane.classList.contains('hidden'));
+});
+
+// ---------- JARVIS: transcript context ----------
+function buildTranscript(maxLines) {
+  const lines = [];
+  for (const it of items.values()) {
+    if (!it.en) continue;
+    const who = it.spk ? (it.spk.name || ('Speaker ' + SPK_LABELS[it.spk.idx])) : 'Speaker';
+    lines.push(who + ': ' + it.en);
+  }
+  return (maxLines ? lines.slice(-maxLines) : lines).join('\n');
+}
+
+// ---------- JARVIS: auto briefing (throttled, calm) ----------
+let finalsSinceBrief = 0;
+let briefTimer = null;
+let briefInFlight = false;
+let briefBuf = '';
+
+function noteNewFinal() {
+  finalsSinceBrief += 1;
+  // Refresh when enough new lines accumulate, or after a short idle, whichever first.
+  if (finalsSinceBrief >= 6) { triggerBrief(); return; }
+  if (briefTimer) clearTimeout(briefTimer);
+  briefTimer = setTimeout(() => { if (finalsSinceBrief >= 2) triggerBrief(); }, 15000);
+}
+
+function triggerBrief() {
+  if (briefInFlight) return;
+  const transcript = buildTranscript(40);
+  if (!transcript) return;
+  if (briefTimer) { clearTimeout(briefTimer); briefTimer = null; }
+  finalsSinceBrief = 0;
+  briefInFlight = true;
+  briefBuf = '';
+  briefStatus.textContent = '정리 중…';
+  briefStatus.className = 'brief-status working';
+  cpBrief.classList.add('updating');
+  window.magic.copilotBrief({ transcript });
+}
+
+window.magic.onBriefDelta((p) => {
+  if (briefBuf === '') cpBrief.innerHTML = '';
+  briefBuf += p.delta;
+  cpBrief.textContent = briefBuf;
+});
+window.magic.onBriefDone(() => {
+  briefInFlight = false;
+  cpBrief.classList.remove('updating');
+  briefStatus.textContent = running ? '실시간' : '완료';
+  briefStatus.className = 'brief-status' + (running ? ' live' : '');
+  if (!briefBuf) { /* keep previous */ }
+});
+
+// ---------- JARVIS: ask ----------
+let askSeq = 0;
+let activeAsk = null; // {id, el}
+
+function sendAsk() {
+  const q = cpQ.value.trim();
+  if (!q) return;
+  const web = webToggle.classList.contains('active');
+  cpQ.value = '';
+  cpQ.style.height = 'auto';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'qa';
+  const qEl = document.createElement('div');
+  qEl.className = 'q';
+  qEl.textContent = q;
+  const aEl = document.createElement('div');
+  aEl.className = 'a' + (web ? ' web' : '');
+  aEl.textContent = web ? '검색 준비 중…' : '생각 중…';
+  wrap.appendChild(qEl);
+  wrap.appendChild(aEl);
+  cpAnswers.appendChild(wrap);
+  cpScroll.scrollTop = cpScroll.scrollHeight;
+
+  askSeq += 1;
+  const id = 'ask-' + askSeq;
+  activeAsk = { id, el: aEl, buf: '' };
+  window.magic.copilotAsk({ id, question: q, transcript: buildTranscript(40), web });
+}
+
+cpSend.addEventListener('click', sendAsk);
+cpQ.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAsk(); }
+});
+cpQ.addEventListener('input', () => {
+  cpQ.style.height = 'auto';
+  cpQ.style.height = Math.min(120, cpQ.scrollHeight) + 'px';
+});
+webToggle.addEventListener('click', () => {
+  webToggle.classList.toggle('active');
+  webToggle.title = webToggle.classList.contains('active') ? '웹 검색: 켜짐' : '웹 검색으로 전문 조사';
+});
+
+window.magic.onAskDelta((p) => {
+  if (!activeAsk || activeAsk.id !== p.id) return;
+  if (activeAsk.buf === '') activeAsk.el.textContent = '';
+  activeAsk.buf += p.delta;
+  activeAsk.el.textContent = activeAsk.buf;
+  cpScroll.scrollTop = cpScroll.scrollHeight;
+});
+window.magic.onAskDone((p) => {
+  if (!activeAsk || (p && p.id && activeAsk.id !== p.id)) return;
+  if (activeAsk.buf === '') activeAsk.el.textContent = '(답변을 가져오지 못했습니다)';
+  if (p && p.error && activeAsk.buf === '') activeAsk.el.textContent = '(오류: ' + p.error + ')';
+  activeAsk = null;
+});
+
+// Copy JARVIS output (briefing + Q&A) for feedback.
+cpCopy.addEventListener('click', async () => {
+  const parts = [];
+  const brief = cpBrief.textContent.trim();
+  if (brief && !brief.includes('회의가 시작되면') && !brief.includes('회의 내용이 쌓이면')) {
+    parts.push('=== 자비스 실시간 브리핑 ===\n' + brief);
+  }
+  const qas = cpAnswers.querySelectorAll('.qa');
+  if (qas.length) {
+    const lines = ['=== 자비스 Q&A ==='];
+    qas.forEach((qa) => {
+      const q = qa.querySelector('.q'); const a = qa.querySelector('.a');
+      if (q) lines.push('Q: ' + q.textContent.trim());
+      if (a) lines.push('A: ' + a.textContent.trim() + '\n');
+    });
+    parts.push(lines.join('\n'));
+  }
+  try {
+    await navigator.clipboard.writeText(parts.join('\n\n') || '(자비스 내용 없음)');
+    const old = cpCopy.textContent;
+    cpCopy.textContent = '✓';
+    setTimeout(() => { cpCopy.textContent = old; }, 1200);
+  } catch (e) { /* clipboard unavailable */ }
 });
 
 // ---------- Font size ----------

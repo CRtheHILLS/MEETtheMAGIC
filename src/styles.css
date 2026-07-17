@@ -208,18 +208,91 @@ body { display: flex; flex-direction: column; }
   font-style: italic; min-height: 20px;
 }
 
-/* ---------- Memo ---------- */
-.memo-pane {
-  width: 38%; min-width: 240px;
+/* ---------- Side pane (JARVIS + Memo) ---------- */
+.side-pane {
+  width: 440px; min-width: 320px; flex-shrink: 0;
   border-left: 1px solid var(--border);
   background: var(--panel);
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; min-height: 0;
 }
-.memo-pane.hidden { display: none; }
-.memo-head {
-  padding: 14px 16px; font-size: 13px; font-weight: 600;
-  color: var(--muted); border-bottom: 1px solid var(--border);
+.side-pane.hidden { display: none; }
+
+.side-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.side-tabs .tab {
+  flex: 1; background: transparent; border: none; cursor: pointer;
+  color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600;
+  padding: 12px 8px; border-bottom: 2px solid transparent;
 }
+.side-tabs .tab:hover { color: var(--text); }
+.side-tabs .tab.active { color: #fff; border-bottom-color: var(--accent); background: rgba(124,92,255,0.06); }
+
+.tab-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tab-pane.hidden { display: none; }
+
+/* Copilot */
+.cp-scroll { flex: 1; overflow-y: auto; padding: 14px 16px; user-select: text; }
+.cp-scroll::-webkit-scrollbar { width: 8px; }
+.cp-scroll::-webkit-scrollbar-thumb { background: #2a3042; border-radius: 4px; }
+
+.cp-brief-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px;
+}
+.cp-head-right { display: flex; align-items: center; gap: 8px; }
+.cp-copy {
+  background: var(--bg-soft); border: 1px solid var(--border); cursor: pointer;
+  color: var(--text); border-radius: 7px; font-size: 12px; padding: 3px 7px;
+}
+.cp-copy:hover { border-color: var(--accent); }
+.brief-status { font-size: 11px; font-weight: 400; color: var(--muted); }
+.brief-status.live { color: var(--green); }
+.brief-status.working { color: var(--amber); }
+
+.cp-brief {
+  background: var(--bg-soft); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.6;
+  color: var(--text); white-space: pre-wrap; word-break: break-word;
+  min-height: 40px; transition: opacity 0.2s;
+}
+.cp-brief.updating { opacity: 0.55; }
+.cp-empty { color: #566; font-size: 13px; line-height: 1.7; text-align: center; padding: 14px 0; }
+
+.cp-answers { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.qa { display: flex; flex-direction: column; gap: 6px; }
+.qa .q {
+  align-self: flex-end; max-width: 88%;
+  background: linear-gradient(135deg, var(--accent), #5b3fff); color: #fff;
+  padding: 8px 12px; border-radius: 12px 12px 4px 12px; font-size: 13px; font-weight: 500;
+}
+.qa .a {
+  align-self: flex-start; max-width: 94%;
+  background: var(--bg-soft); border: 1px solid var(--border);
+  padding: 10px 13px; border-radius: 12px 12px 12px 4px;
+  font-size: 14px; line-height: 1.62; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+}
+.qa .a.web::before { content: "🔍 웹조사  "; font-size: 11px; color: var(--accent-2); }
+
+.cp-input {
+  display: flex; align-items: flex-end; gap: 6px; padding: 10px;
+  border-top: 1px solid var(--border); flex-shrink: 0; background: #12151d;
+}
+.web-toggle, .cp-send {
+  background: var(--bg-soft); border: 1px solid var(--border); cursor: pointer;
+  color: var(--text); border-radius: 9px; font-size: 15px; padding: 8px 10px;
+  flex-shrink: 0; height: 38px;
+}
+.web-toggle:hover, .cp-send:hover { border-color: var(--accent); }
+.web-toggle.active { background: var(--accent-2); border-color: var(--accent-2); color: #06222a; }
+.cp-send { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+#cp-q {
+  flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 9px;
+  color: var(--text); padding: 9px 11px; font-family: inherit; font-size: 14px;
+  line-height: 1.4; resize: none; outline: none; max-height: 120px; user-select: text;
+}
+#cp-q:focus { border-color: var(--accent); }
+
+/* Memo */
 #memo {
   flex: 1; background: transparent; border: none; resize: none;
   color: var(--text); padding: 16px; font-size: 15px; line-height: 1.6;

@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld('magic', {
   requestTranslate: (payload) => ipcRenderer.send('request-translate', payload),
   toggleOnTop: () => ipcRenderer.invoke('toggle-on-top'),
 
+  // JARVIS copilot
+  copilotBrief: (payload) => ipcRenderer.send('copilot-brief', payload),
+  copilotAsk: (payload) => ipcRenderer.send('copilot-ask', payload),
+  onBriefDelta: (cb) => ipcRenderer.on('brief-delta', (_e, p) => cb(p)),
+  onBriefDone: (cb) => ipcRenderer.on('brief-done', (_e, p) => cb(p)),
+  onAskDelta: (cb) => ipcRenderer.on('ask-delta', (_e, p) => cb(p)),
+  onAskDone: (cb) => ipcRenderer.on('ask-done', (_e, p) => cb(p)),
+
   onStatus: (cb) => ipcRenderer.on('status', (_e, p) => cb(p)),
   onSpeech: (cb) => ipcRenderer.on('speech', (_e, p) => cb(p)),
   onTranscriptDelta: (cb) => ipcRenderer.on('transcript-delta', (_e, p) => cb(p)),

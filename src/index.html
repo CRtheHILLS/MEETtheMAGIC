@@ -19,7 +19,7 @@
       </div>
       <button id="ontop-btn" class="ghost-btn" title="항상 위에 표시 (오버레이)">📌</button>
       <button id="copy-btn" class="ghost-btn" title="전체 대화 복사">📋</button>
-      <button id="memo-toggle" class="ghost-btn" title="메모장 열기/닫기">📝 메모</button>
+      <button id="jarvis-toggle" class="ghost-btn active" title="자비스 패널 열기/닫기">🤖 자비스</button>
       <button id="font-btn" class="ghost-btn" title="글자 크기">A±</button>
       <button id="start-btn" class="primary-btn">▶ 시작</button>
     </div>
@@ -45,10 +45,37 @@
       </div>
     </section>
 
-    <section id="memo-pane" class="memo-pane hidden">
-      <div class="memo-head">메모장</div>
-      <textarea id="memo" placeholder="미팅 메모를 자유롭게 적으세요... (자동 저장)"></textarea>
-    </section>
+    <aside id="side-pane" class="side-pane">
+      <div class="side-tabs">
+        <button class="tab active" data-tab="copilot">🤖 자비스</button>
+        <button class="tab" data-tab="memo">📝 메모</button>
+      </div>
+
+      <div id="copilot-tab" class="tab-pane">
+        <div class="cp-scroll" id="cp-scroll">
+          <div class="cp-brief-head">
+            <span>🎯 실시간 브리핑</span>
+            <span class="cp-head-right">
+              <span id="brief-status" class="brief-status">대기 중</span>
+              <button id="cp-copy" class="cp-copy" title="자비스 브리핑·답변 복사 (피드백용)">📋</button>
+            </span>
+          </div>
+          <div id="cp-brief" class="cp-brief">
+            <div class="cp-empty">회의가 시작되면 자비스가 옆에서<br/>핵심·용어·주목할 점을 자동으로 정리합니다.</div>
+          </div>
+          <div id="cp-answers" class="cp-answers"></div>
+        </div>
+        <div class="cp-input">
+          <button id="web-toggle" class="web-toggle" title="웹 검색으로 전문 조사">🔍</button>
+          <textarea id="cp-q" rows="1" placeholder="회의 중 모르는 것을 바로 물어보세요… (Enter 전송)"></textarea>
+          <button id="cp-send" class="cp-send">▶</button>
+        </div>
+      </div>
+
+      <div id="memo-tab" class="tab-pane hidden">
+        <textarea id="memo" placeholder="미팅 메모를 자유롭게 적으세요… (자동 저장)"></textarea>
+      </div>
+    </aside>
   </main>
 
   <script src="renderer.js"></script>
