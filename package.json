@@ -1,12 +1,38 @@
 {
   "name": "meet-the-magic",
   "version": "1.0.0",
-  "description": "Real-time English->Korean live caption for Microsoft Teams meetings",
+  "description": "Real-time English->Korean live meeting captions with speaker diarization and an AI copilot (OpenAI Realtime API + Electron).",
   "main": "src/main.js",
   "scripts": {
     "start": "electron ."
   },
-  "author": "",
+  "keywords": [
+    "real-time-translation",
+    "live-captions",
+    "speech-to-text",
+    "transcription",
+    "openai",
+    "realtime-api",
+    "english-to-korean",
+    "translation",
+    "meeting-assistant",
+    "ai-copilot",
+    "speaker-diarization",
+    "subtitles",
+    "electron",
+    "microsoft-teams",
+    "zoom",
+    "voice-ai"
+  ],
+  "homepage": "https://github.com/CRtheHILLS/MEETtheMAGIC#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CRtheHILLS/MEETtheMAGIC.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CRtheHILLS/MEETtheMAGIC/issues"
+  },
+  "author": "CRtheHILLS",
   "license": "MIT",
   "devDependencies": {
     "electron": "^31.3.1"
